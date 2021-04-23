@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">2048</string>
+
+    <!-- Footer -->
+    <string name="footer_text">Developed by <a href="https://github.com/lengzhang/">Leng Zhang</a>. Based on <a href="https://play2048.co/">2048 by Gabriele Cirulli</a>.</string>
+
 </resources>
