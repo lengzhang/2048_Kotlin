@@ -85,6 +85,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     }
 
     companion object {
+        enum class Moves { UP, RIGHT, DOWN, LEFT }
 
         fun toGrid(grid: String?, isNew: Boolean = false): ArrayList<Transition?>? {
             if (grid == null) return null
@@ -127,21 +128,3 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         }
     }
 }
-
-/*
-
-
-    @TypeConverter
-    fun toGrid(grid: String?): ArrayList<Int>? {
-        val arr = grid?.split("|")?.map { it.toInt() } ?: return null
-        return ArrayList(arr)
-    }
-
-    @TypeConverter
-    fun fromGrid(grid: ArrayList<Int>?): String? {
-        return grid?.joinToString(
-            separator = "|"
-        )
-    }
-
- */

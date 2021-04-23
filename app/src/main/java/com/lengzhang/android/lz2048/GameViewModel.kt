@@ -1,10 +1,13 @@
 package com.lengzhang.android.lz2048
 
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.lengzhang.android.lz2048.gameengine.GameEngine
 import com.lengzhang.android.lz2048.gameengine.GameEngineDelegate
 import com.lengzhang.android.lz2048.gameengine.Transition
+
+private const val TAG = "GameViewModel"
 
 class GameViewModel : ViewModel(), GameEngineDelegate {
     private var gameEngine: GameEngine = GameEngine(this)
@@ -23,6 +26,10 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
 
     fun newGame() {
         this.gameEngine.newGame()
+    }
+
+    fun move(dir: GameEngine.Companion.Moves) {
+        Log.d(TAG, "move $dir")
     }
 
     override fun applyGame(grid: ArrayList<Transition?>?, step: Int?, score: Int?) {
