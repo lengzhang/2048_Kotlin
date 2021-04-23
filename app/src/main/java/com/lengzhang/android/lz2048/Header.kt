@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.lifecycle.LifecycleOwner
 
 class Header @JvmOverloads constructor(
     context: Context,
@@ -36,6 +37,20 @@ class Header @JvmOverloads constructor(
         howToPlayTextView = findViewById(R.id.how_to_play)
         howToPlayTextView.setOnClickListener {
             howToPlayDialogBuilder.show()
+        }
+    }
+
+    fun attachGameViewModel(gameViewModel: GameViewModel, owner: LifecycleOwner) {
+        newGameButton.setOnClickListener {
+            gameViewModel.newGame()
+        }
+
+        gameViewModel.step.observe(owner) {
+            stepBlock.value = it
+        }
+
+        gameViewModel.score.observe(owner) {
+            scoreBlock.value = it
         }
     }
 
