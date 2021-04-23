@@ -34,5 +34,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         this.findViewById<Header>(R.id.header).attachGameViewModel(gameViewModel, this)
+        this.findViewById<GameView>(R.id.game_view).attachGameViewModel(gameViewModel, this)
     }
 }
