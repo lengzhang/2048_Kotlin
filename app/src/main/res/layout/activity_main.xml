@@ -6,6 +6,11 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <com.lengzhang.android.lz2048.Header
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent" />
+
 
     <com.lengzhang.android.lz2048.Footer
         android:layout_width="match_parent"
