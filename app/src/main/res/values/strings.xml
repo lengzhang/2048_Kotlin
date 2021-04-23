@@ -1,6 +1,16 @@
 <resources>
     <string name="app_name">2048</string>
 
+    <!-- Header -->
+    <string name="game_tip">Join the tiles, get to <strong>2048</strong>!</string>
+    <string name="how_to_play"><a href="">How to play?</a></string>
+
+    <!-- Control Section -->
+    <string name="step">STEP</string>
+    <string name="score">SCORE</string>
+    <string name="best">BEST</string>
+    <string name="new_game">New Game</string>
+
     <!-- Footer -->
     <string name="footer_text">Developed by <a href="https://github.com/lengzhang/">Leng Zhang</a>. Based on <a href="https://play2048.co/">2048 by Gabriele Cirulli</a>.</string>
 
