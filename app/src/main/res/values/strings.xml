@@ -14,4 +14,7 @@
     <!-- Footer -->
     <string name="footer_text">Developed by <a href="https://github.com/lengzhang/">Leng Zhang</a>. Based on <a href="https://play2048.co/">2048 by Gabriele Cirulli</a>.</string>
 
+    <!-- How to Play Dialog-->
+    <string name="how_to_play_dialog_title">How to Play?</string>
+    <string name="how_to_play_dialog_message">Swipe the screen to move the tiles. Tiles with the same number merge into one when they touch. Add them up to reach <strong>2048</strong>!</string>
 </resources>
