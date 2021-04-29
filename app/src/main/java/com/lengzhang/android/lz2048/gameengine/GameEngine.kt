@@ -32,6 +32,181 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         this.delegated.applyGame(this.grid, this.step, this.score)
     }
 
+    fun move(dir: Moves) {
+        var tmpScore = this.score
+
+        val changed = when (dir) {
+            Moves.UP -> moveUp()
+            Moves.RIGHT -> moveRight()
+            Moves.DOWN -> moveDown()
+            Moves.LEFT -> moveLeft()
+        }
+
+        if (changed) {
+            addTile()
+            this.delegated.applyGame(this.grid, this.step, this.score)
+        }
+    }
+
+    private fun slideTiles(vararg indexes: Int): Boolean {
+        var moved = false
+        val tmpArr = intArrayOf(*indexes)
+
+        var i = 0 // Indicate the index of empty spot
+        for (j in tmpArr.indices) {
+            if (grid[tmpArr[i]] != null) {
+                i++
+                continue
+            } else if (grid[tmpArr[j]] == null) continue
+            else {
+                // Do slide
+                grid[tmpArr[i]] =
+                    grid[tmpArr[j]]?.let {
+                        if (it.type == TransitionTypes.MERGE) {
+                            Transition(
+                                type = TransitionTypes.MERGE,
+                                value = it.value,
+                                pos = i,
+                                posA = it.posA,
+                                posB = it.posB
+                            )
+                        } else {
+                            Transition(
+                                type = TransitionTypes.MOVE,
+                                value = it.value,
+                                pos = i,
+                                posA = j
+                            )
+                        }
+                    }
+                grid[tmpArr[j]] = null
+                moved = true
+                i++
+            }
+        }
+        return moved
+    }
+
+    private fun compactTiles(vararg indexes: Int): Boolean {
+        var compacted = false
+        val tmpArr = intArrayOf(*indexes)
+
+        for (i in 0 until (tmpArr.size - 1)) {
+            if (grid[tmpArr[i]] != null
+                && (grid[tmpArr[i]]?.value ?: 1) == (grid[tmpArr[i + 1]]?.value ?: -1)
+            ) {
+                val a = grid[tmpArr[i]] as Transition
+                val b = grid[tmpArr[i + 1]] as Transition
+                val value = a.value * 2
+                grid[tmpArr[i]] = Transition(
+                    type = TransitionTypes.MERGE,
+                    value = value,
+                    pos = i,
+                    posA = a.posA,
+                    posB = b.posA
+                )
+                grid[tmpArr[i + 1]] = null
+                this.score += value
+                if (value > maxTile) maxTile = value
+                compacted = true
+                emptyCount += 1
+            }
+        }
+        return compacted
+    }
+
+    private fun slideUp(): Boolean {
+        val a = slideTiles(0, 4, 8, 12)
+        val b = slideTiles(1, 5, 9, 13)
+        val c = slideTiles(2, 6, 10, 14)
+        val d = slideTiles(3, 7, 11, 15)
+        return (a || b || c || d)
+    }
+
+    private fun compactUp(): Boolean {
+        val a = compactTiles(0, 4, 8, 12)
+        val b = compactTiles(1, 5, 9, 13)
+        val c = compactTiles(2, 6, 10, 14)
+        val d = compactTiles(3, 7, 11, 15)
+        return (a || b || c || d)
+    }
+
+    private fun slideRight(): Boolean {
+        val a = slideTiles(3, 2, 1, 0)
+        val b = slideTiles(7, 6, 5, 4)
+        val c = slideTiles(11, 10, 9, 8)
+        val d = slideTiles(15, 14, 13, 12)
+        return (a || b || c || d)
+    }
+
+    private fun compactRight(): Boolean {
+        val a = compactTiles(3, 2, 1, 0)
+        val b = compactTiles(7, 6, 5, 4)
+        val c = compactTiles(11, 10, 9, 8)
+        val d = compactTiles(15, 14, 13, 12)
+        return (a || b || c || d)
+    }
+
+    private fun slideDown(): Boolean {
+        val a = slideTiles(12, 8, 4, 0)
+        val b = slideTiles(13, 9, 5, 1)
+        val c = slideTiles(14, 10, 6, 2)
+        val d = slideTiles(15, 11, 7, 3)
+        return (a || b || c || d)
+    }
+
+    private fun compactDown(): Boolean {
+        val a = compactTiles(12, 8, 4, 0)
+        val b = compactTiles(13, 9, 5, 1)
+        val c = compactTiles(14, 10, 6, 2)
+        val d = compactTiles(15, 11, 7, 3)
+        return (a || b || c || d)
+    }
+
+    private fun slideLeft(): Boolean {
+        val a = slideTiles(0, 1, 2, 3)
+        val b = slideTiles(4, 5, 6, 7)
+        val c = slideTiles(8, 9, 10, 11)
+        val d = slideTiles(12, 13, 14, 15)
+        return (a || b || c || d)
+    }
+
+    private fun compactLeft(): Boolean {
+        val a = compactTiles(0, 1, 2, 3)
+        val b = compactTiles(4, 5, 6, 7)
+        val c = compactTiles(8, 9, 10, 11)
+        val d = compactTiles(12, 13, 14, 15)
+        return (a || b || c || d)
+    }
+
+    private fun moveUp(): Boolean {
+        val a = slideUp()
+        val b = compactUp()
+        val c = slideUp()
+        return (a || b || c)
+    }
+
+    private fun moveRight(): Boolean {
+        val a = slideRight()
+        val b = compactRight()
+        val c = slideRight()
+        return (a || b || c)
+    }
+
+    private fun moveDown(): Boolean {
+        val a = slideDown()
+        val b = compactDown()
+        val c = slideDown()
+        return (a || b || c)
+    }
+
+    private fun moveLeft(): Boolean {
+        val a = slideLeft()
+        val b = compactLeft()
+        val c = slideLeft()
+        return (a || b || c)
+    }
+
     private fun initGrid() {
         if (this.grid.size != GameEngineConstants.TILE_COUNT) {
             this.grid =

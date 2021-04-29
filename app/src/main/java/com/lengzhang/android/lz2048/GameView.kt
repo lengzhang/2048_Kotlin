@@ -24,7 +24,7 @@ class GameView @JvmOverloads constructor(
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
     private lateinit var gameViewModel: GameViewModel
-    private lateinit var gameBoard: FrameLayout
+    private var gameBoard: FrameLayout
 
     private var x1 = 0f
     private var y1 = 0f
@@ -85,7 +85,7 @@ class GameView @JvmOverloads constructor(
         var str = "---------\n"
         for (i in 0 until GameEngineConstants.ROW_COUNT) {
             for (j in 0 until GameEngineConstants.COLUMN_COUNT) {
-                str += "| " + (grid?.get(i * GameEngineConstants.COLUMN_COUNT + j)?.value.toString()) + " "
+                str += "| " + (grid.get(i * GameEngineConstants.COLUMN_COUNT + j)?.value.toString()) + " "
             }
             str += "|\n"
         }
