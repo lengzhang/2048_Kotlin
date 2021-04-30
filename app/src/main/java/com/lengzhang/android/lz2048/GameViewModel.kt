@@ -20,7 +20,6 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
 
     init {
         newGame()
-
     }
 
     fun newGame() {

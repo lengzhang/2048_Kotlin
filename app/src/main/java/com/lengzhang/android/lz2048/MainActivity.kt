@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         this.findViewById<Header>(R.id.header).attachGameViewModel(gameViewModel, this)
-        this.findViewById<GameView>(R.id.game_view).attachGameViewModel(gameViewModel, this)
+        this.findViewById<FrameLayout>(R.id.game_view_container)
+            .addView(GameView(this, gameViewModel, this))
     }
 }
