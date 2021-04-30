@@ -1,6 +1,5 @@
 package com.lengzhang.android.lz2048
 
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -9,11 +8,11 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
-import android.view.animation.OvershootInterpolator
 import androidx.core.content.res.ResourcesCompat.getColor
 import androidx.lifecycle.LifecycleOwner
 import com.lengzhang.android.lz2048.gameengine.GameEngine
 import com.lengzhang.android.lz2048.gameengine.Transition
+import com.lengzhang.android.lz2048.gameengine.TransitionTypes
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -32,6 +31,7 @@ class GameView constructor(
     private var y1 = 0F
 
     private var transitions: List<Transition> = ArrayList()
+    private var tileUnits: ArrayList<TileUnit> = ArrayList()
 
     private val colorMapper: Map<Int, TileColor> = mapOf(
         2 to TileColor(
@@ -81,11 +81,11 @@ class GameView constructor(
     )
 
     private var isSizeReady = false
-    private var boardSize = 0F
-    private var tileSize = 0F
-    private var density = 0F
-    private var rectRadius = 0F
-    private var marginSize = 0F
+    var boardSize = 0F
+    var tileSize = 0F
+    var density = 0F
+    var rectRadius = 0F
+    var marginSize = 0F
 
     init {
         isSizeReady = false
@@ -96,12 +96,14 @@ class GameView constructor(
             this.tileSize = (this.boardSize - 5 * this.marginSize) / 4
             this.rectRadius = 4 * this.density
             isSizeReady = true
-            this.refresh()
+            updateTileUnits()
         }
 
-        gameViewModel.transitions.observe(owner) {
-            transitions = it
-            if (isSizeReady) this.refresh()
+        gameViewModel.transitions.observe(owner) { transitions ->
+            this.transitions = transitions
+
+            if (!isSizeReady) return@observe
+            updateTileUnits()
         }
     }
 
@@ -134,16 +136,48 @@ class GameView constructor(
     }
 
     override fun onDraw(canvas: Canvas?) {
+        super.onDraw(canvas)
         canvas?.apply {
             drawBackgroundBoard(canvas)
             drawTransitions(canvas)
         }
-        super.onDraw(canvas)
-        Log.d(TAG, "dragging")
+    }
+
+    private fun updateTileUnits(transitions: List<Transition> = this.transitions) {
+        this.tileUnits.clear()
+        transitions.forEach { transition ->
+            when (transition.type) {
+                TransitionTypes.MOVE -> {
+                    val tileUnit = TileUnit(this)
+                    tileUnit.setData(transition.posA ?: transition.pos, transition.value)
+                    val toRow = transition.pos / 4
+                    val toCol = transition.pos % 4
+
+                    if (toRow == tileUnit.row) tileUnit.moveToByCol(toCol)
+                    else tileUnit.moveToByRow(toRow)
+
+                    tileUnits.add(tileUnit)
+                }
+//                TransitionTypes.MERGE -> {
+//
+//                }
+                else -> {
+                    val tileUnit = TileUnit(this)
+                    tileUnit.setData(transition.pos, transition.value)
+                    tileUnit.enterAnimation(
+                        if (transition.type == TransitionTypes.NEW) 1000L
+                        else 0L
+                    )
+                    tileUnits.add(tileUnit)
+                }
+            }
+
+        }
+        this.refresh()
     }
 
 
-    private fun refresh() {
+    fun refresh() {
         this.invalidate()
     }
 
@@ -183,47 +217,49 @@ class GameView constructor(
     }
 
     private fun drawTransitions(canvas: Canvas) {
-        val paint = Paint()
-        val halfSize = this.tileSize / 2
-        transitions.forEach { transition ->
+        Log.d(TAG, "drawTransitions")
+        this.tileUnits.forEach { tileUnit ->
+            Log.d(TAG, tileUnit.value.toString())
             canvas.apply {
                 save()
 
-
-                val row = transition.pos / 4
-                val col = transition.pos % 4
-                val x = this@GameView.marginSize * (col + 1) + this@GameView.tileSize * (col + 0.5F)
-                val y = this@GameView.marginSize * (row + 1) + this@GameView.tileSize * (row + 0.5F)
-
-                translate(x, y)
+                translate(tileUnit.x, tileUnit.y)
                 // Draw Cell
-                paint.color = colorMapper[transition.value]?.backgroundColor ?: 0
+                val cellPaint = Paint()
+                cellPaint.color = colorMapper[tileUnit.value]?.backgroundColor ?: 0
                 drawRoundRect(
-                    -halfSize,
-                    -halfSize,
-                    halfSize,
-                    halfSize,
+                    -tileUnit.size / 2,
+                    -tileUnit.size / 2,
+                    tileUnit.size / 2,
+                    tileUnit.size / 2,
                     rectRadius,
                     rectRadius,
-                    paint
+                    cellPaint
                 )
 
                 // Draw Text
-                paint.color = colorMapper[transition.value]?.textColor ?: 0
+                val textPaint = Paint()
+                textPaint.color = colorMapper[tileUnit.value]?.textColor ?: 0
 
-                paint.textSize = TypedValue.applyDimension(
+                textPaint.textSize = TypedValue.applyDimension(
                     TypedValue.COMPLEX_UNIT_SP,
                     30F,
                     resources.displayMetrics
                 )
-                paint.textAlign = Paint.Align.CENTER
-                paint.typeface = Typeface.DEFAULT_BOLD
-                val top = paint.fontMetrics.top
-                val bottom = paint.fontMetrics.bottom
-                drawText(transition.value.toString(), 0F, -(top + bottom) / 2, paint)
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.typeface = Typeface.DEFAULT_BOLD
+                val top = textPaint.fontMetrics.top
+                val bottom = textPaint.fontMetrics.bottom
+                drawText(
+                    tileUnit.value.toString(),
+                    0F,
+                    -(top + bottom) / 2,
+                    textPaint
+                )
 
                 restore()
             }
         }
+
     }
 }
