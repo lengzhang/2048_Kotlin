@@ -19,7 +19,7 @@ class GameView constructor(
     owner: LifecycleOwner
 ) : View(context) {
 
-    private var transitions: ArrayList<Transition> = ArrayList()
+    private var transitions: List<Transition> = ArrayList()
 
     private var x1 = 0f
     private var y1 = 0f
@@ -34,11 +34,8 @@ class GameView constructor(
             )
         }
 
-        gameViewModel.grid.observe(owner) {
-            transitions.clear()
-            for (transition in it) {
-                if (transition != null) transitions.add(transition)
-            }
+        gameViewModel.transitions.observe(owner) {
+            transitions = it
             this.refresh()
         }
     }

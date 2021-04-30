@@ -1,5 +1,6 @@
 package com.lengzhang.android.lz2048
 
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.lengzhang.android.lz2048.gameengine.GameEngine
@@ -17,6 +18,8 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
 
     val grid: MutableLiveData<ArrayList<Transition?>> by lazy { MutableLiveData<ArrayList<Transition?>>() }
 
+    val transitions: MutableLiveData<List<Transition>> by lazy { MutableLiveData<List<Transition>>() }
+
 
     init {
         newGame()
@@ -30,12 +33,16 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
         this.gameEngine.move(dir)
     }
 
-    override fun applyGame(grid: ArrayList<Transition?>?, step: Int?, score: Int?) {
-        if (step != null) this.step.value = step
-        if (score != null) this.score.value = score
-        if (grid != null) this.grid.value = grid
+    override fun applyGame(step: Int, score: Int) {
+        this.step.value = step
+        this.score.value = score
 
-        this.gameEngine.printGrid()
+
+        this.transitions.value = this.gameEngine.getTransitions()
+
+        Log.d(TAG, this.gameEngine.getGridFormatedString())
+        Log.d(TAG, this.gameEngine.getGrid().toString())
+        Log.d(TAG, this.gameEngine.getTransitions().toString())
     }
 
     override fun userWin() {
