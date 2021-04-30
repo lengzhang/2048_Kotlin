@@ -7,4 +7,31 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="bg">#BBADA0</color>
+    <color name="empt_bg">#59EEE4DA</color>
+
+    <color name="t2_bg">#EEE4DA</color>
+    <color name="t4_bg">#EDE0C8</color>
+    <color name="t8_bg">#F2B179</color>
+    <color name="t16_bg">#F59563</color>
+    <color name="t32_bg">#F67C5F</color>
+    <color name="t64_bg">#F65E3B</color>
+    <color name="t128_bg">#EDCF72</color>
+    <color name="t256_bg">#EDCC61</color>
+    <color name="t512_bg">#EDC850</color>
+    <color name="t1024_bg">#EDC53F</color>
+    <color name="t2048_bg">#EDC22E</color>
+
+    <color name="t2_tx">#776E65</color>
+    <color name="t4_tx">#776E65</color>
+    <color name="t8_tx">#F9F6F2</color>
+    <color name="t16_tx">#F9F6F2</color>
+    <color name="t32_tx">#F9F6F2</color>
+    <color name="t64_tx">#F9F6F2</color>
+    <color name="t128_tx">#F9F6F2</color>
+    <color name="t256_tx">#F9F6F2</color>
+    <color name="t512_tx">#F9F6F2</color>
+    <color name="t1024_tx">#F9F6F2</color>
+    <color name="t2048_tx">#F9F6F2</color>
 </resources>
