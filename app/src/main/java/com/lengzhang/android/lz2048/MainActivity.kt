@@ -36,6 +36,6 @@ class MainActivity : AppCompatActivity() {
 
         this.findViewById<Header>(R.id.header).attachGameViewModel(gameViewModel, this)
         this.findViewById<FrameLayout>(R.id.game_view_container)
-            .addView(GameView(this, gameViewModel, this))
+            .addView(GameView(this, gameViewModel = gameViewModel))
     }
 }

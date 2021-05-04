@@ -1,64 +1,206 @@
 package com.lengzhang.android.lz2048
 
-import android.animation.ValueAnimator
-import android.view.animation.OvershootInterpolator
+import com.lengzhang.android.lz2048.gameengine.Transition
+import com.lengzhang.android.lz2048.gameengine.TransitionTypes
+import java.util.*
+import kotlin.math.abs
 
-private const val DEFAULT_DURATION = 1000L
+private const val DEFAULT_DURATION = 12L
 
-class TileUnit(private val gameView: GameView) {
+private const val TAG = "TileUnit"
 
-    var x = 0F
-    var y = 0F
+class TileUnit(private val transition: Transition, private val gameView: GameView) {
 
-    var row = 0
-    var col = 0
-    var value = 0
+    data class TileState(
+        val value: Int,
+        val toX: Float,
+        val toY: Float,
+        var fromX: Float,
+        var fromY: Float,
+        val deltaX: Float,
+        val deltaY: Float,
+        var scale: Float,
+        val deltaScale: Float
+    )
 
-    var size = 0F
+    val id: UUID = UUID.randomUUID()
 
-    fun setData(pos: Int, value: Int) {
-        this.value = value
-        this.row = pos / 4
-        this.col = pos % 4
-        this.x = gameView.marginSize * (this.col + 1) + gameView.tileSize * (this.col + 0.5F)
-        this.y = gameView.marginSize * (this.row + 1) + gameView.tileSize * (this.row + 0.5F)
-    }
+    val type = transition.type
+    var done = false
 
-    fun enterAnimation(duration: Long = DEFAULT_DURATION) {
-        val animate = ValueAnimator.ofFloat(0F, gameView.tileSize).apply {
-            this.duration = duration
-            interpolator = OvershootInterpolator()
-            addUpdateListener {
-                size = animatedValue as Float
-                if (size < gameView.tileSize) gameView.refresh()
+    // Target
+    var target: TileState
+
+    // A - used for TransitionTypes.Move and TransitionTypes.Merger
+    var tileA: TileState? = null
+
+    // B - used for TransitionTypes.Merger
+    var tileB: TileState? = null
+
+    init {
+        val (x, y) = getCoordinateFromPosition(transition.pos)
+
+        when (type) {
+            TransitionTypes.NEW -> {
+                target = TileState(
+                    value = transition.value,
+                    toX = x,
+                    toY = y,
+                    fromX = x,
+                    fromY = y,
+                    deltaX = 0F,
+                    deltaY = 0F,
+                    scale = 0F,
+                    deltaScale = 1F / DEFAULT_DURATION
+                )
+            }
+            TransitionTypes.MERGE -> {
+                target = TileState(transition.value, x, y, x, y, 0F, 0F, 0F, 1F / DEFAULT_DURATION)
+                if (transition.posA != null) {
+                    val (xA, yA) = getCoordinateFromPosition(transition.posA!!)
+                    tileA = TileState(
+                        value = transition.value / 2,
+                        toX = x,
+                        toY = y,
+                        fromX = xA,
+                        fromY = yA,
+                        deltaX = abs(xA - x) / DEFAULT_DURATION,
+                        deltaY = abs(yA - y) / DEFAULT_DURATION,
+                        scale = 1F,
+                        deltaScale = 1F / DEFAULT_DURATION
+                    )
+                }
+                if (transition.posB != null) {
+                    val (xB, yB) = getCoordinateFromPosition(transition.posB!!)
+                    tileB = TileState(
+                        value = transition.value / 2,
+                        toX = x,
+                        toY = y,
+                        fromX = xB,
+                        fromY = yB,
+                        deltaX = abs(xB - x) / DEFAULT_DURATION,
+                        deltaY = abs(yB - y) / DEFAULT_DURATION,
+                        scale = 1F,
+                        deltaScale = 1F / DEFAULT_DURATION
+                    )
+                }
+            }
+            else -> {
+                var fromX = x
+                var fromY = y
+                var deltaX = 0F
+                var deltaY = 0F
+                if (transition.posA != null) {
+                    val (xA, yA) = getCoordinateFromPosition(transition.posA!!)
+                    fromX = xA
+                    fromY = yA
+                    deltaX = abs(fromX - x) / DEFAULT_DURATION
+                    deltaY = abs(fromY - y) / DEFAULT_DURATION
+                }
+                target = TileState(transition.value, x, y, fromX, fromY, deltaX, deltaY, 1F, 0F)
             }
         }
-        animate.start()
+        done = false
     }
 
-    fun moveToByRow(toRow: Int) {
-        val toY = gameView.marginSize * (toRow + 1) + gameView.tileSize * (toRow + 0.5F)
-        val animate = ValueAnimator.ofFloat(y, toY).apply {
-            duration = DEFAULT_DURATION
-            interpolator = OvershootInterpolator()
-            addUpdateListener {
-                y = animatedValue as Float
-                gameView.refresh()
+    fun next() {
+        if (done) return
+        else {
+            when (type) {
+                TransitionTypes.NEW -> {
+                    this.target.apply {
+                        if (scale == 1F) done = true
+                        else {
+                            scale += deltaScale
+                            if (scale > 1F) scale = 1F
+                        }
+                    }
+                }
+                TransitionTypes.MOVE -> {
+                    this.target.apply {
+                        if (fromX == toX && fromY == toY) done = true
+                        else if (fromX != toX) {
+                            fromX = moveClose(fromX, toX, deltaX)
+                        } else {
+                            fromY = moveClose(fromY, toY, deltaY)
+                        }
+                    }
+                }
+                TransitionTypes.MERGE -> {
+                    if (this.tileA != null || this.tileB != null) {
+                        this.tileA?.apply {
+                            if (fromX != toX) fromX = moveClose(fromX, toX, deltaX)
+                            if (fromY != toY) fromY = moveClose(fromY, toY, deltaY)
+                        }
+                        this.tileB?.apply {
+                            if (fromX != toX) fromX = moveClose(fromX, toX, deltaX)
+                            if (fromY != toY) fromY = moveClose(fromY, toY, deltaY)
+                        }
+
+                        if (
+                            this.tileA != null
+                            && this.tileA!!.fromX == this.tileA!!.toX
+                            && this.tileA!!.fromY == this.tileA!!.toY
+                            && this.tileB != null
+                            && this.tileB!!.fromX == this.tileB!!.toX
+                            && this.tileB!!.fromY == this.tileB!!.toY
+                        ) {
+                            this.tileA?.apply {
+                                scale -= deltaScale
+                                if (scale < 0F) scale = 0F
+                            }
+                            this.tileB?.apply {
+                                scale -= deltaScale
+                                if (scale < 0F) scale = 0F
+                            }
+                        }
+
+                        if (this.tileA?.scale == 0F) this.tileA = null
+                        if (this.tileB?.scale == 0F) this.tileB = null
+                    } else {
+                        this.target.apply {
+                            if (scale == 1F) done = true
+                            else {
+                                scale += deltaScale
+                                if (scale > 1F) scale = 1F
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    done = true
+                }
             }
         }
-        animate.start()
     }
 
-    fun moveToByCol(toCol: Int) {
-        val toX = gameView.marginSize * (toCol + 1) + gameView.tileSize * (toCol + 0.5F)
-        val animate = ValueAnimator.ofFloat(x, toX).apply {
-            duration = DEFAULT_DURATION
-            interpolator = OvershootInterpolator()
-            addUpdateListener {
-                x = animatedValue as Float
-                gameView.refresh()
-            }
+    private fun getCoordinateFromPosition(pos: Int): Array<Float> {
+        val row = pos / 4
+        val col = pos % 4
+        val x = gameView.marginSize * (col + 1) + gameView.tileSize * (col + 0.5F)
+        val y = gameView.marginSize * (row + 1) + gameView.tileSize * (row + 0.5F)
+        return arrayOf(x, y)
+    }
+
+    private fun moveClose(from: Float, to: Float, delta: Float): Float {
+        var coord = from
+        if (from < to) {
+            coord = from + delta
+            if (coord > to) coord = to
+        } else if (from > to) {
+            coord = from - delta
+            if (coord < to) coord = to
         }
-        animate.start()
+        return coord
+    }
+
+    override fun toString(): String {
+        return "id:\t${this.id}\n" +
+                "type:\t$type\n" +
+                "transition:\t${transition}\n" +
+                "target:\t${this.target}\n" +
+                "tileA:\t${this.tileA.toString()}\n" +
+                "tileB:\t${this.tileB.toString()}\n" +
+                "done:\t${this.done}"
     }
 }

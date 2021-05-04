@@ -3,16 +3,16 @@ package com.lengzhang.android.lz2048
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.PixelFormat
 import android.graphics.Typeface
-import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
-import android.view.View
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.core.content.res.ResourcesCompat.getColor
 import androidx.lifecycle.LifecycleOwner
 import com.lengzhang.android.lz2048.gameengine.GameEngine
 import com.lengzhang.android.lz2048.gameengine.Transition
-import com.lengzhang.android.lz2048.gameengine.TransitionTypes
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -23,14 +23,15 @@ private class TileColor(val backgroundColor: Int, val textColor: Int)
 
 class GameView constructor(
     context: Context,
-    private val gameViewModel: GameViewModel,
-    owner: LifecycleOwner
-) : View(context) {
+    private val gameViewModel: GameViewModel
+) :
+    SurfaceView(context), SurfaceHolder.Callback {
+
+    private val gameThread: GameThread
 
     private var x1 = 0F
     private var y1 = 0F
 
-    private var transitions: List<Transition> = ArrayList()
     private var tileUnits: ArrayList<TileUnit> = ArrayList()
 
     private val colorMapper: Map<Int, TileColor> = mapOf(
@@ -80,7 +81,7 @@ class GameView constructor(
         ),
     )
 
-    private var isSizeReady = false
+    var isDrawing = false
     var boardSize = 0F
     var tileSize = 0F
     var density = 0F
@@ -88,178 +89,189 @@ class GameView constructor(
     var marginSize = 0F
 
     init {
-        isSizeReady = false
+        holder.addCallback((this))
+        holder.setFormat(PixelFormat.TRANSLUCENT)
+        gameThread = GameThread(holder, this)
         this.post {
             this.boardSize = min(this.width, this.height).toFloat()
             this.density = getContext().resources.displayMetrics.density
             this.marginSize = 10 * this.density
             this.tileSize = (this.boardSize - 5 * this.marginSize) / 4
             this.rectRadius = 4 * this.density
-            isSizeReady = true
-            updateTileUnits()
-        }
+            isDrawing = true
 
-        gameViewModel.transitions.observe(owner) { transitions ->
-            this.transitions = transitions
+            gameViewModel.transitions.observe(context as LifecycleOwner) { transitions ->
+                updateTileUnits(transitions)
+            }
 
-            if (!isSizeReady) return@observe
-            updateTileUnits()
+            gameThread.start()
         }
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        gameThread.setRunning(true)
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+        var retry = true
+        while (retry) {
+            try {
+                gameThread.setRunning(false)
+                gameThread.join()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            }
+            retry = false
+        }
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-        when (event?.action) {
-            MotionEvent.ACTION_DOWN -> {
-                x1 = event.x
-                y1 = event.y
-                return true
-            }
-            MotionEvent.ACTION_UP -> {
-                val diffX = event.x - x1
-                val diffY = event.y - y1
-                if (diffX * diffX + diffY * diffY > MIN_SWIPE_DISTANCE) {
-                    gameViewModel.move(
-                        if (abs(diffX) > abs(diffY)) {
-                            if (diffX > 0) GameEngine.Companion.Moves.RIGHT
-                            else GameEngine.Companion.Moves.LEFT
-                        } else {
-                            if (diffY > 0) GameEngine.Companion.Moves.DOWN
-                            else GameEngine.Companion.Moves.UP
-                        }
-                    )
+        if (!isDrawing) {
+            when (event?.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    x1 = event.x
+                    y1 = event.y
+                    performClick()
                 }
-                return true
+                MotionEvent.ACTION_UP -> {
+                    val diffX = event.x - x1
+                    val diffY = event.y - y1
+                    if (diffX * diffX + diffY * diffY > MIN_SWIPE_DISTANCE) {
+                        gameViewModel.move(
+                            if (abs(diffX) > abs(diffY)) {
+                                if (diffX > 0) GameEngine.Companion.Moves.RIGHT
+                                else GameEngine.Companion.Moves.LEFT
+                            } else {
+                                if (diffY > 0) GameEngine.Companion.Moves.DOWN
+                                else GameEngine.Companion.Moves.UP
+                            }
+                        )
+                    }
+                }
             }
         }
-
-        return super.onTouchEvent(event)
+        return true
     }
 
-    override fun onDraw(canvas: Canvas?) {
-        super.onDraw(canvas)
-        canvas?.apply {
-            drawBackgroundBoard(canvas)
-            drawTransitions(canvas)
-        }
+    override fun draw(canvas: Canvas?) {
+        super.draw(canvas)
+        if (canvas == null) return
+        drawBackgroundBoard(canvas)
+        isDrawing = !drawTiles(canvas)
     }
 
-    private fun updateTileUnits(transitions: List<Transition> = this.transitions) {
+    private fun updateTileUnits(transitions: List<Transition>) {
         this.tileUnits.clear()
         transitions.forEach { transition ->
             when (transition.type) {
-                TransitionTypes.MOVE -> {
-                    val tileUnit = TileUnit(this)
-                    tileUnit.setData(transition.posA ?: transition.pos, transition.value)
-                    val toRow = transition.pos / 4
-                    val toCol = transition.pos % 4
-
-                    if (toRow == tileUnit.row) tileUnit.moveToByCol(toCol)
-                    else tileUnit.moveToByRow(toRow)
-
-                    tileUnits.add(tileUnit)
-                }
-//                TransitionTypes.MERGE -> {
-//
-//                }
                 else -> {
-                    val tileUnit = TileUnit(this)
-                    tileUnit.setData(transition.pos, transition.value)
-                    tileUnit.enterAnimation(
-                        if (transition.type == TransitionTypes.NEW) 1000L
-                        else 0L
-                    )
-                    tileUnits.add(tileUnit)
+                    this.tileUnits.add(TileUnit(transition, this@GameView))
                 }
             }
-
         }
-        this.refresh()
-    }
-
-
-    fun refresh() {
-        this.invalidate()
+        isDrawing = true
     }
 
     private fun drawBackgroundBoard(canvas: Canvas) {
-        val paint = Paint()
-        canvas.apply {
-            save()
-            paint.color = getColor(resources, R.color.bg, null)
-            drawRoundRect(
-                0F,
-                0F,
-                this@GameView.boardSize,
-                this@GameView.boardSize,
-                this@GameView.rectRadius,
-                this@GameView.rectRadius,
-                paint
-            )
+        canvas.drawColor(getColor(resources, R.color.bg, null))
 
-            paint.color = getColor(resources, R.color.empt_bg, null)
-            for (i in 0 until 4) {
-                for (j in 0 until 4) {
-                    val dx = this@GameView.marginSize * (j + 1) + this@GameView.tileSize * j
-                    val dy = this@GameView.marginSize * (i + 1) + this@GameView.tileSize * i
-                    drawRoundRect(
-                        dx,
-                        dy,
-                        dx + this@GameView.tileSize,
-                        dy + this@GameView.tileSize,
-                        this@GameView.rectRadius,
-                        this@GameView.rectRadius,
-                        paint
-                    )
-                }
+        val paint = Paint()
+        paint.color = getColor(resources, R.color.board_bg, null)
+        canvas.drawRoundRect(
+            0F,
+            0F,
+            this@GameView.boardSize,
+            this@GameView.boardSize,
+            this@GameView.rectRadius,
+            this@GameView.rectRadius,
+            paint
+        )
+        paint.color = getColor(resources, R.color.empty_bg, null)
+
+        for (i in 0 until 4) {
+            for (j in 0 until 4) {
+                val dx = this@GameView.marginSize * (j + 1) + this@GameView.tileSize * j
+                val dy = this@GameView.marginSize * (i + 1) + this@GameView.tileSize * i
+                canvas.drawRoundRect(
+                    dx,
+                    dy,
+                    dx + this@GameView.tileSize,
+                    dy + this@GameView.tileSize,
+                    this@GameView.rectRadius,
+                    this@GameView.rectRadius,
+                    paint
+                )
             }
-            restore()
         }
     }
 
-    private fun drawTransitions(canvas: Canvas) {
-        Log.d(TAG, "drawTransitions")
+    private fun drawTiles(canvas: Canvas): Boolean {
+        var isDone = true
+
         this.tileUnits.forEach { tileUnit ->
-            Log.d(TAG, tileUnit.value.toString())
-            canvas.apply {
-                save()
+            // Draw Target
+            if (tileUnit.target.scale > 0F) drawTile(canvas, tileUnit.target)
+            // Draw Tile A
+            if (tileUnit.tileA != null) drawTile(canvas, tileUnit.tileA!!)
+            // Draw Tile B
+            if (tileUnit.tileB != null) drawTile(canvas, tileUnit.tileB!!)
 
-                translate(tileUnit.x, tileUnit.y)
-                // Draw Cell
-                val cellPaint = Paint()
-                cellPaint.color = colorMapper[tileUnit.value]?.backgroundColor ?: 0
-                drawRoundRect(
-                    -tileUnit.size / 2,
-                    -tileUnit.size / 2,
-                    tileUnit.size / 2,
-                    tileUnit.size / 2,
-                    rectRadius,
-                    rectRadius,
-                    cellPaint
-                )
-
-                // Draw Text
-                val textPaint = Paint()
-                textPaint.color = colorMapper[tileUnit.value]?.textColor ?: 0
-
-                textPaint.textSize = TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_SP,
-                    30F,
-                    resources.displayMetrics
-                )
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.typeface = Typeface.DEFAULT_BOLD
-                val top = textPaint.fontMetrics.top
-                val bottom = textPaint.fontMetrics.bottom
-                drawText(
-                    tileUnit.value.toString(),
-                    0F,
-                    -(top + bottom) / 2,
-                    textPaint
-                )
-
-                restore()
+            if (!tileUnit.done) {
+                isDone = false
+                tileUnit.next()
             }
         }
 
+
+        return isDone
+    }
+
+    private fun drawTile(canvas: Canvas, tileState: TileUnit.TileState) {
+        canvas.apply {
+            save()
+            translate(tileState.fromX, tileState.fromY)
+
+            // Draw Cell
+            val cellPaint = Paint()
+            cellPaint.color = colorMapper[tileState.value]?.backgroundColor ?: 0
+            drawRoundRect(
+                -(tileSize * tileState.scale) / 2,
+                -(tileSize * tileState.scale) / 2,
+                (tileSize * tileState.scale) / 2,
+                (tileSize * tileState.scale) / 2,
+                rectRadius,
+                rectRadius,
+                cellPaint
+            )
+
+            // Draw Text
+            val textPaint = Paint()
+            textPaint.color = colorMapper[tileState.value]?.textColor ?: 0
+
+            textPaint.textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                30F * tileState.scale,
+                resources.displayMetrics
+            )
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.typeface = Typeface.DEFAULT_BOLD
+            val top = textPaint.fontMetrics.top
+            val bottom = textPaint.fontMetrics.bottom
+            drawText(
+                tileState.value.toString(),
+                0F,
+                -(top + bottom) / 2,
+                textPaint
+            )
+            restore()
+        }
     }
 }
