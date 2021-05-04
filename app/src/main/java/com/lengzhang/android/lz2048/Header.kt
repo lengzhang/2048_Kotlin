@@ -52,6 +52,10 @@ class Header @JvmOverloads constructor(
         gameViewModel.score.observe(owner) {
             scoreBlock.value = it
         }
+
+        gameViewModel.bestScore.observe(owner) {
+            bestBlock.value = it
+        }
     }
 
     private fun createHowToPlayDialogBuilder(context: Context) {

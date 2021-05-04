@@ -11,7 +11,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
     private val random = Random()
 
-    private var grid: ArrayList<Transition?> =
+    private var transitions: ArrayList<Transition?> =
         Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
 
     private var step = 0
@@ -19,16 +19,40 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     private var emptyCount = GameEngineConstants.TILE_COUNT
     private var maxTile = GameEngineConstants.BLANK_VALUE
 
-    fun newGame() {
-        grid =
-            Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
+    fun newGame(): Array<Any> {
         this.step = 0
         this.score = 0
         this.emptyCount = GameEngineConstants.TILE_COUNT
         this.maxTile = GameEngineConstants.BLANK_VALUE
 
+        this.transitions =
+            Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
+
         addTile()
         addTile()
+
+        this.delegated.applyGame(this.step, this.score)
+        return arrayOf(this.getGrid(), this.step, this.score)
+    }
+
+    fun loadGame(grid: List<Int>, step: Int, score: Int) {
+        Log.d(TAG, "loadGame")
+        this.step = step
+        this.score = score
+        this.emptyCount = GameEngineConstants.TILE_COUNT
+        this.maxTile = GameEngineConstants.BLANK_VALUE
+
+        this.transitions =
+            Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
+        var i = 0
+        while (i < transitions.size && i < grid.size) {
+            if (grid[i] > 0) {
+                this.transitions[i] = Transition(TransitionTypes.NEW, grid[i], i)
+                this.emptyCount--
+                this.maxTile = max(this.maxTile, grid[i])
+            }
+            i++
+        }
 
         this.delegated.applyGame(this.step, this.score)
     }
@@ -44,8 +68,9 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
         if (changed) {
             addTile()
-            Log.d(TAG, this.grid.toString())
+            Log.d(TAG, this.transitions.toString())
             Log.d(TAG, "${this.emptyCount} ${this.maxTile}")
+            this.step++
             this.delegated.applyGame(this.step, this.score)
         }
     }
@@ -66,9 +91,9 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
         var blankCount = 0
         for (i in 0 until GameEngineConstants.TILE_COUNT) {
-            if (grid[i] == null) {
+            if (transitions[i] == null) {
                 if (blankCount == pos) {
-                    grid[i] = Transition(TransitionTypes.NEW, value, i)
+                    transitions[i] = Transition(TransitionTypes.NEW, value, i)
                     score += value
                     emptyCount--
                     maxTile = max(maxTile, value)
@@ -116,10 +141,10 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         var changed = false
 
         val indexArr = intArrayOf(*indexes)
-        var tmpArr = ArrayList<Transition>()
+        val tmpArr = ArrayList<Transition>()
         // Move
         for (index in indexArr) {
-            val transition = this.grid[index] ?: continue
+            val transition = this.transitions[index] ?: continue
             tmpArr.add(Transition(TransitionTypes.NONE, transition.value, -1, index))
         }
 
@@ -138,7 +163,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         Log.d(TAG, tmpArr.toString())
         for ((i, targetIndex) in indexArr.withIndex()) {
             if (i >= tmpArr.size) {
-                this.grid[targetIndex] = null
+                this.transitions[targetIndex] = null
                 continue
             }
             val transition = tmpArr[i].apply {
@@ -155,7 +180,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
                 maxTile = max(maxTile, transition.value)
             }
             if (transition.type != TransitionTypes.NONE) changed = true
-            this.grid[targetIndex] = transition
+            this.transitions[targetIndex] = transition
         }
         return changed
     }
@@ -164,7 +189,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         var str = "----------\n---------\n"
         for (i in 0 until GameEngineConstants.ROW_COUNT) {
             for (j in 0 until GameEngineConstants.COLUMN_COUNT) {
-                str += "| " + (this.grid[i * GameEngineConstants.COLUMN_COUNT + j]?.value.toString()) + " "
+                str += "| " + (this.transitions[i * GameEngineConstants.COLUMN_COUNT + j]?.value.toString()) + " "
             }
             str += "|\n"
         }
@@ -173,13 +198,13 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     }
 
     fun getGrid(): List<Int> {
-        return this.grid.map {
+        return this.transitions.map {
             it?.value ?: GameEngineConstants.BLANK_VALUE
         }
     }
 
     fun getTransitions(): List<Transition> {
-        return this.grid.filterNotNull()
+        return this.transitions.filterNotNull()
     }
 
 
