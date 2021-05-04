@@ -11,7 +11,7 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
     private val random = Random()
 
-    private var grid: ArrayList<Transition?> =
+    private var transitions: ArrayList<Transition?> =
         Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
 
     private var step = 0
@@ -19,22 +19,46 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     private var emptyCount = GameEngineConstants.TILE_COUNT
     private var maxTile = GameEngineConstants.BLANK_VALUE
 
-    fun newGame() {
-        initGrid()
+    fun newGame(): Array<Any> {
         this.step = 0
         this.score = 0
         this.emptyCount = GameEngineConstants.TILE_COUNT
         this.maxTile = GameEngineConstants.BLANK_VALUE
 
-        addTile(2)
-        addTile(2)
+        this.transitions =
+            Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
 
-        this.delegated.applyGame(this.grid, this.step, this.score)
+        addTile()
+        addTile()
+
+        this.delegated.applyGame(this.step, this.score)
+        return arrayOf(this.getGrid(), this.step, this.score)
+    }
+
+    fun loadGame(grid: List<Int>, step: Int, score: Int) {
+        Log.d(TAG, "loadGame")
+        this.step = step
+        this.score = score
+        this.emptyCount = GameEngineConstants.TILE_COUNT
+        this.maxTile = GameEngineConstants.BLANK_VALUE
+
+        this.transitions =
+            Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
+        var i = 0
+        while (i < transitions.size && i < grid.size) {
+            if (grid[i] > 0) {
+                this.transitions[i] = Transition(TransitionTypes.NEW, grid[i], i)
+                this.emptyCount--
+                this.maxTile = max(this.maxTile, grid[i])
+            }
+            i++
+        }
+
+        this.delegated.applyGame(this.step, this.score)
     }
 
     fun move(dir: Moves) {
-        var tmpScore = this.score
-
+        Log.d(TAG, dir.toString())
         val changed = when (dir) {
             Moves.UP -> moveUp()
             Moves.RIGHT -> moveRight()
@@ -44,176 +68,14 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
         if (changed) {
             addTile()
-            this.delegated.applyGame(this.grid, this.step, this.score)
+            Log.d(TAG, this.transitions.toString())
+            Log.d(TAG, "${this.emptyCount} ${this.maxTile}")
+            this.step++
+            this.delegated.applyGame(this.step, this.score)
         }
-    }
 
-    private fun slideTiles(vararg indexes: Int): Boolean {
-        var moved = false
-        val tmpArr = intArrayOf(*indexes)
-
-        var i = 0 // Indicate the index of empty spot
-        for (j in tmpArr.indices) {
-            if (grid[tmpArr[i]] != null) {
-                i++
-                continue
-            } else if (grid[tmpArr[j]] == null) continue
-            else {
-                // Do slide
-                grid[tmpArr[i]] =
-                    grid[tmpArr[j]]?.let {
-                        if (it.type == TransitionTypes.MERGE) {
-                            Transition(
-                                type = TransitionTypes.MERGE,
-                                value = it.value,
-                                pos = i,
-                                posA = it.posA,
-                                posB = it.posB
-                            )
-                        } else {
-                            Transition(
-                                type = TransitionTypes.MOVE,
-                                value = it.value,
-                                pos = i,
-                                posA = j
-                            )
-                        }
-                    }
-                grid[tmpArr[j]] = null
-                moved = true
-                i++
-            }
-        }
-        return moved
-    }
-
-    private fun compactTiles(vararg indexes: Int): Boolean {
-        var compacted = false
-        val tmpArr = intArrayOf(*indexes)
-
-        for (i in 0 until (tmpArr.size - 1)) {
-            if (grid[tmpArr[i]] != null
-                && (grid[tmpArr[i]]?.value ?: 1) == (grid[tmpArr[i + 1]]?.value ?: -1)
-            ) {
-                val a = grid[tmpArr[i]] as Transition
-                val b = grid[tmpArr[i + 1]] as Transition
-                val value = a.value * 2
-                grid[tmpArr[i]] = Transition(
-                    type = TransitionTypes.MERGE,
-                    value = value,
-                    pos = i,
-                    posA = a.posA,
-                    posB = b.posA
-                )
-                grid[tmpArr[i + 1]] = null
-                this.score += value
-                if (value > maxTile) maxTile = value
-                compacted = true
-                emptyCount += 1
-            }
-        }
-        return compacted
-    }
-
-    private fun slideUp(): Boolean {
-        val a = slideTiles(0, 4, 8, 12)
-        val b = slideTiles(1, 5, 9, 13)
-        val c = slideTiles(2, 6, 10, 14)
-        val d = slideTiles(3, 7, 11, 15)
-        return (a || b || c || d)
-    }
-
-    private fun compactUp(): Boolean {
-        val a = compactTiles(0, 4, 8, 12)
-        val b = compactTiles(1, 5, 9, 13)
-        val c = compactTiles(2, 6, 10, 14)
-        val d = compactTiles(3, 7, 11, 15)
-        return (a || b || c || d)
-    }
-
-    private fun slideRight(): Boolean {
-        val a = slideTiles(3, 2, 1, 0)
-        val b = slideTiles(7, 6, 5, 4)
-        val c = slideTiles(11, 10, 9, 8)
-        val d = slideTiles(15, 14, 13, 12)
-        return (a || b || c || d)
-    }
-
-    private fun compactRight(): Boolean {
-        val a = compactTiles(3, 2, 1, 0)
-        val b = compactTiles(7, 6, 5, 4)
-        val c = compactTiles(11, 10, 9, 8)
-        val d = compactTiles(15, 14, 13, 12)
-        return (a || b || c || d)
-    }
-
-    private fun slideDown(): Boolean {
-        val a = slideTiles(12, 8, 4, 0)
-        val b = slideTiles(13, 9, 5, 1)
-        val c = slideTiles(14, 10, 6, 2)
-        val d = slideTiles(15, 11, 7, 3)
-        return (a || b || c || d)
-    }
-
-    private fun compactDown(): Boolean {
-        val a = compactTiles(12, 8, 4, 0)
-        val b = compactTiles(13, 9, 5, 1)
-        val c = compactTiles(14, 10, 6, 2)
-        val d = compactTiles(15, 11, 7, 3)
-        return (a || b || c || d)
-    }
-
-    private fun slideLeft(): Boolean {
-        val a = slideTiles(0, 1, 2, 3)
-        val b = slideTiles(4, 5, 6, 7)
-        val c = slideTiles(8, 9, 10, 11)
-        val d = slideTiles(12, 13, 14, 15)
-        return (a || b || c || d)
-    }
-
-    private fun compactLeft(): Boolean {
-        val a = compactTiles(0, 1, 2, 3)
-        val b = compactTiles(4, 5, 6, 7)
-        val c = compactTiles(8, 9, 10, 11)
-        val d = compactTiles(12, 13, 14, 15)
-        return (a || b || c || d)
-    }
-
-    private fun moveUp(): Boolean {
-        val a = slideUp()
-        val b = compactUp()
-        val c = slideUp()
-        return (a || b || c)
-    }
-
-    private fun moveRight(): Boolean {
-        val a = slideRight()
-        val b = compactRight()
-        val c = slideRight()
-        return (a || b || c)
-    }
-
-    private fun moveDown(): Boolean {
-        val a = slideDown()
-        val b = compactDown()
-        val c = slideDown()
-        return (a || b || c)
-    }
-
-    private fun moveLeft(): Boolean {
-        val a = slideLeft()
-        val b = compactLeft()
-        val c = slideLeft()
-        return (a || b || c)
-    }
-
-    private fun initGrid() {
-        if (this.grid.size != GameEngineConstants.TILE_COUNT) {
-            this.grid =
-                Array<Transition?>(GameEngineConstants.TILE_COUNT) { null }.toCollection(ArrayList())
-        } else {
-            for (i in 0 until GameEngineConstants.TILE_COUNT) this.grid[i] = null
-        }
+        if (this.maxTile == GameEngineConstants.TARGET_VALUE) this.delegated.userWin()
+        else if (!isMovable()) this.delegated.userLose()
     }
 
     private fun addTile(seedValue: Int? = -1): Boolean {
@@ -232,13 +94,13 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
         var blankCount = 0
         for (i in 0 until GameEngineConstants.TILE_COUNT) {
-            if (grid[i] == null) {
+            if (transitions[i] == null) {
                 if (blankCount == pos) {
-                    grid[i] = Transition(TransitionTypes.NEW, value, pos)
+                    transitions[i] = Transition(TransitionTypes.NEW, value, i)
                     score += value
                     emptyCount--
                     maxTile = max(maxTile, value)
-                    return false
+                    return true
                 }
                 blankCount++
             }
@@ -246,60 +108,131 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         return false
     }
 
-    fun printGrid(grid: ArrayList<Transition?>? = this.grid) {
+    private fun moveUp(): Boolean {
+        val a = moveTiles(0, 4, 8, 12)
+        val b = moveTiles(1, 5, 9, 13)
+        val c = moveTiles(2, 6, 10, 14)
+        val d = moveTiles(3, 7, 11, 15)
+        return (a || b || c || d)
+    }
 
+    private fun moveRight(): Boolean {
+        val a = moveTiles(3, 2, 1, 0)
+        val b = moveTiles(7, 6, 5, 4)
+        val c = moveTiles(11, 10, 9, 8)
+        val d = moveTiles(15, 14, 13, 12)
+        return (a || b || c || d)
+    }
+
+    private fun moveDown(): Boolean {
+        val a = moveTiles(12, 8, 4, 0)
+        val b = moveTiles(13, 9, 5, 1)
+        val c = moveTiles(14, 10, 6, 2)
+        val d = moveTiles(15, 11, 7, 3)
+        return (a || b || c || d)
+    }
+
+    private fun moveLeft(): Boolean {
+        val a = moveTiles(0, 1, 2, 3)
+        val b = moveTiles(4, 5, 6, 7)
+        val c = moveTiles(8, 9, 10, 11)
+        val d = moveTiles(12, 13, 14, 15)
+        return (a || b || c || d)
+    }
+
+    private fun moveTiles(vararg indexes: Int): Boolean {
+        var changed = false
+
+        val indexArr = intArrayOf(*indexes)
+        val tmpArr = ArrayList<Transition>()
+        // Move
+        for (index in indexArr) {
+            val transition = this.transitions[index] ?: continue
+            tmpArr.add(Transition(TransitionTypes.NONE, transition.value, -1, index))
+        }
+
+        // Merge
+        var j = 1
+        while (j < tmpArr.size) {
+            if (tmpArr[j - 1].value == tmpArr[j].value) {
+                tmpArr[j - 1].value *= 2
+                tmpArr[j - 1].posB = tmpArr[j].posA
+                tmpArr.removeAt(j)
+            }
+            j++
+        }
+
+        // Update Grid
+        Log.d(TAG, tmpArr.toString())
+        for ((i, targetIndex) in indexArr.withIndex()) {
+            if (i >= tmpArr.size) {
+                this.transitions[targetIndex] = null
+                continue
+            }
+            val transition = tmpArr[i].apply {
+                type = when {
+                    posB != null -> TransitionTypes.MERGE
+                    posA == targetIndex -> TransitionTypes.NONE
+                    else -> TransitionTypes.MOVE
+                }
+                pos = targetIndex
+            }
+            if (transition.type == TransitionTypes.MERGE) {
+                this.score += transition.value
+                emptyCount++
+                maxTile = max(maxTile, transition.value)
+            }
+            if (transition.type != TransitionTypes.NONE) changed = true
+            this.transitions[targetIndex] = transition
+        }
+        return changed
+    }
+
+    private fun isMovable(): Boolean {
+        if (this.emptyCount > 0) return true
+
+        /* Check follow tiles
+        | x | x | x |  |
+        | x | x | x |  |
+        | x | x | x |  |
+        | x | x | x |  |
+         */
+        for (i in 0 until GameEngineConstants.ROW_COUNT) {
+            for (j in 0 until GameEngineConstants.COLUMN_COUNT - 1) {
+                val index = i * GameEngineConstants.COLUMN_COUNT + j
+                if (transitions[index]?.value ?: -1 == transitions[index + 1]?.value ?: -2) return true
+                if (i == GameEngineConstants.ROW_COUNT - 1) continue
+                if (transitions[index]?.value ?: -1 == transitions[index + GameEngineConstants.COLUMN_COUNT]?.value ?: -2) return true
+            }
+        }
+
+        return false
+    }
+
+    fun getGridFormattedString(): String {
         var str = "----------\n---------\n"
         for (i in 0 until GameEngineConstants.ROW_COUNT) {
             for (j in 0 until GameEngineConstants.COLUMN_COUNT) {
-                str += "| " + (grid?.get(i * GameEngineConstants.COLUMN_COUNT + j)?.value.toString()) + " "
+                str += "| " + (this.transitions[i * GameEngineConstants.COLUMN_COUNT + j]?.value.toString()) + " "
             }
             str += "|\n"
         }
         str += "---------"
-        Log.d(TAG, str)
+        return str
     }
+
+    fun getGrid(): List<Int> {
+        return this.transitions.map {
+            it?.value ?: GameEngineConstants.BLANK_VALUE
+        }
+    }
+
+    fun getTransitions(): List<Transition> {
+        return this.transitions.filterNotNull()
+    }
+
 
     companion object {
         enum class Moves { UP, RIGHT, DOWN, LEFT }
-
-        fun toGrid(grid: String?, isNew: Boolean = false): ArrayList<Transition?>? {
-            if (grid == null) return null
-
-            val arr = grid.split("|").map { it.toIntOrNull() ?: GameEngineConstants.BLANK_VALUE }
-
-            if (arr.size != GameEngineConstants.TILE_COUNT) return null
-
-            var tileCount = 0
-
-            val arrList = ArrayList<Transition?>()
-
-            for ((pos, value) in arr.withIndex()) {
-                if (value == GameEngineConstants.BLANK_VALUE || value < 0) {
-                    arrList.add(null)
-                } else {
-                    tileCount++
-                    arrList.add(
-                        Transition(
-                            if (isNew) TransitionTypes.NEW else TransitionTypes.NONE,
-                            value,
-                            pos
-                        )
-                    )
-                }
-            }
-
-            return if (tileCount < 2) null else arrList
-        }
-
-        fun fromGrid(grid: ArrayList<Transition?>?): String? {
-            if (grid == null || grid.size != GameEngineConstants.TILE_COUNT) return null
-
-            var str = ""
-            for ((i, trans) in grid.withIndex()) {
-                if (i != 0) str += "|"
-                str += trans?.value?.toString() ?: GameEngineConstants.BLANK_VALUE.toString()
-            }
-            return str
-        }
     }
 }

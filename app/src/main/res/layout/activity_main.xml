@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg"
     tools:context=".MainActivity">
 
     <com.lengzhang.android.lz2048.Header
@@ -12,12 +13,13 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <com.lengzhang.android.lz2048.GameView
-        android:id="@+id/game_view"
+    <FrameLayout
+        android:id="@+id/game_view_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_margin="16dp"
         app:layout_constraintBottom_toTopOf="@+id/footer"
+        app:layout_constraintDimensionRatio="1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/header" />
