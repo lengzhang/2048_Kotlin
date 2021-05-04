@@ -2,14 +2,13 @@ package com.lengzhang.android.lz2048
 
 import com.lengzhang.android.lz2048.gameengine.Transition
 import com.lengzhang.android.lz2048.gameengine.TransitionTypes
-import java.util.*
 import kotlin.math.abs
 
 private const val DEFAULT_DURATION = 12L
 
 private const val TAG = "TileUnit"
 
-class TileUnit(private val transition: Transition, private val gameView: GameView) {
+class TileUnit(transition: Transition, private val gameView: GameView) {
 
     data class TileState(
         val value: Int,
@@ -23,9 +22,7 @@ class TileUnit(private val transition: Transition, private val gameView: GameVie
         val deltaScale: Float
     )
 
-    val id: UUID = UUID.randomUUID()
-
-    val type = transition.type
+    private val type = transition.type
     var done = false
 
     // Target
@@ -192,15 +189,5 @@ class TileUnit(private val transition: Transition, private val gameView: GameVie
             if (coord < to) coord = to
         }
         return coord
-    }
-
-    override fun toString(): String {
-        return "id:\t${this.id}\n" +
-                "type:\t$type\n" +
-                "transition:\t${transition}\n" +
-                "target:\t${this.target}\n" +
-                "tileA:\t${this.tileA.toString()}\n" +
-                "tileB:\t${this.tileB.toString()}\n" +
-                "done:\t${this.done}"
     }
 }
