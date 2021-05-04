@@ -10,7 +10,6 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import com.lengzhang.android.lz2048.database.GameStatus
-import kotlin.math.max
 
 private const val TAG = "MainActivity"
 
@@ -50,16 +49,13 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, it.toString())
             val recentGame = if (it.isNotEmpty()) it[0] else null
             Log.d(TAG, recentGame.toString())
-            if (recentGame == null || recentGame.status != GameStatus.PLAYING) {
-                var bestScore = 0
-                it.forEach { game -> bestScore = max(bestScore, game.score) }
-                gameViewModel.bestScore.value = bestScore
-                gameViewModel.newGame()
-            } else if (gameViewModel.currentGame == null) {
-                var bestScore = 0
-                it.forEach { game -> bestScore = max(bestScore, game.score) }
-                gameViewModel.bestScore.value = bestScore
-                gameViewModel.loadGame(recentGame)
+            gameViewModel.setBestScore(it)
+            if (gameViewModel.currentGame.value == null) {
+                if (recentGame == null || recentGame.status != GameStatus.PLAYING) {
+                    gameViewModel.newGame()
+                } else {
+                    gameViewModel.loadGame(recentGame)
+                }
             }
         }
     }
