@@ -8,6 +8,8 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
+    <color name="new_game_bg">#8f7a66</color>
+
     <color name="bg">#FAF8EF</color>
 
     <color name="board_bg">#BBADA0</color>
