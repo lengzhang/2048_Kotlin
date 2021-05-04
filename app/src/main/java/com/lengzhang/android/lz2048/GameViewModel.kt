@@ -1,6 +1,5 @@
 package com.lengzhang.android.lz2048
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -86,10 +85,6 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
         }
 
         this.transitions.value = this.gameEngine.getTransitions()
-
-        Log.d(TAG, this.gameEngine.getGridFormattedString())
-        Log.d(TAG, this.gameEngine.getGrid().toString())
-        Log.d(TAG, this.gameEngine.getTransitions().toString())
     }
 
     override fun userWin() {
@@ -107,5 +102,3 @@ class GameViewModel : ViewModel(), GameEngineDelegate {
     }
 
 }
-
-//4,4,64,128,128,64,128,64,64,128,64,128,128,64,128,64

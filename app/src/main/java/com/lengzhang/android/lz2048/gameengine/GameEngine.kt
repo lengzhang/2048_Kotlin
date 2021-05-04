@@ -1,6 +1,5 @@
 package com.lengzhang.android.lz2048.gameengine
 
-import android.util.Log
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.max
@@ -36,7 +35,6 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     }
 
     fun loadGame(grid: List<Int>, step: Int, score: Int) {
-        Log.d(TAG, "loadGame")
         this.step = step
         this.score = score
         this.emptyCount = GameEngineConstants.TILE_COUNT
@@ -58,7 +56,6 @@ class GameEngine(private val delegated: GameEngineDelegate) {
     }
 
     fun move(dir: Moves) {
-        Log.d(TAG, dir.toString())
         val changed = when (dir) {
             Moves.UP -> moveUp()
             Moves.RIGHT -> moveRight()
@@ -68,8 +65,6 @@ class GameEngine(private val delegated: GameEngineDelegate) {
 
         if (changed) {
             addTile()
-            Log.d(TAG, this.transitions.toString())
-            Log.d(TAG, "${this.emptyCount} ${this.maxTile}")
             this.step++
             this.delegated.applyGame(this.step, this.score)
         }
@@ -163,7 +158,6 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         }
 
         // Update Grid
-        Log.d(TAG, tmpArr.toString())
         for ((i, targetIndex) in indexArr.withIndex()) {
             if (i >= tmpArr.size) {
                 this.transitions[targetIndex] = null

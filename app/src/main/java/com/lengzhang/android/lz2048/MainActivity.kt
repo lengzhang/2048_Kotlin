@@ -2,7 +2,6 @@ package com.lengzhang.android.lz2048
 
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.Window
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -46,9 +45,7 @@ class MainActivity : AppCompatActivity() {
 
         // Watch Games
         gameViewModel.games.observe(this) {
-            Log.d(TAG, it.toString())
             val recentGame = if (it.isNotEmpty()) it[0] else null
-            Log.d(TAG, recentGame.toString())
             gameViewModel.setBestScore(it)
             if (gameViewModel.currentGame.value == null) {
                 if (recentGame == null || recentGame.status != GameStatus.PLAYING) {
