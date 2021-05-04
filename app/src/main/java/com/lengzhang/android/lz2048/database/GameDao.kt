@@ -6,7 +6,7 @@ import java.util.*
 
 @Dao
 interface GameDao {
-    @Query("SELECT * FROM games ORDER BY created_at")
+    @Query("SELECT * FROM games ORDER BY created_at DESC")
     fun getGames(): LiveData<List<Game>>
 
     @Query("SELECT * FROM games WHERE id=(:id)")
