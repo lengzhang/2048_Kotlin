@@ -73,6 +73,9 @@ class GameEngine(private val delegated: GameEngineDelegate) {
             this.step++
             this.delegated.applyGame(this.step, this.score)
         }
+
+        if (this.maxTile == GameEngineConstants.TARGET_VALUE) this.delegated.userWin()
+        else if (!isMovable()) this.delegated.userLose()
     }
 
     private fun addTile(seedValue: Int? = -1): Boolean {
@@ -185,7 +188,28 @@ class GameEngine(private val delegated: GameEngineDelegate) {
         return changed
     }
 
-    fun getGridFormatedString(): String {
+    private fun isMovable(): Boolean {
+        if (this.emptyCount > 0) return true
+
+        /* Check follow tiles
+        | x | x | x |  |
+        | x | x | x |  |
+        | x | x | x |  |
+        | x | x | x |  |
+         */
+        for (i in 0 until GameEngineConstants.ROW_COUNT) {
+            for (j in 0 until GameEngineConstants.COLUMN_COUNT - 1) {
+                val index = i * GameEngineConstants.COLUMN_COUNT + j
+                if (transitions[index]?.value ?: -1 == transitions[index + 1]?.value ?: -2) return true
+                if (i == GameEngineConstants.ROW_COUNT - 1) continue
+                if (transitions[index]?.value ?: -1 == transitions[index + GameEngineConstants.COLUMN_COUNT]?.value ?: -2) return true
+            }
+        }
+
+        return false
+    }
+
+    fun getGridFormattedString(): String {
         var str = "----------\n---------\n"
         for (i in 0 until GameEngineConstants.ROW_COUNT) {
             for (j in 0 until GameEngineConstants.COLUMN_COUNT) {
